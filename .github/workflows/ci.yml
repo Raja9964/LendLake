@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LENDLAKE_SCALE: "0.15"
+      LENDLAKE_START_MONTH: "2024-01"
+      RUN_DATE: "2024-12-31"
+      BACKFILL_FROM: "2024-01-31"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Install dbt packages
+        run: dbt deps --project-dir transform --profiles-dir transform
+
+      - name: Generate synthetic source data (small scale)
+        run: python -m lendlake generate --backfill-from "$BACKFILL_FROM" --run-date "$RUN_DATE"
+
+      - name: Run pipeline month by month (bronze ingest + dbt build)
+        run: python -m lendlake run --backfill-from "$BACKFILL_FROM" --run-date "$RUN_DATE" --skip-generate
+
+      - name: dbt build (models and tests) for the final run date
+        run: dbt build --project-dir transform --profiles-dir transform --vars "{run_date: '$RUN_DATE'}"
+
+      - name: pytest
+        run: pytest

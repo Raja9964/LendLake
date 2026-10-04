@@ -121,6 +121,8 @@ class LendingSimulator:
         employment = "SELF_EMPLOYED" if product.code == "PL_SE" or rng.random() < 0.2 else "SALARIED"
         letters = "".join(rng.choice(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 3))
         customer_id = f"CIF{self._next_id('customer'):08d}"
+        email = f"{first}.{last}{int(rng.integers(1, 999))}@{rng.choice(ref.EMAIL_DOMAINS)}"
+        pan_suffix = rng.choice(list("ABCDEFGHJKLMNPRSTUVWXYZ"))
         return {
             "customer_id": customer_id,
             "first_name": first,
@@ -128,8 +130,8 @@ class LendingSimulator:
             "gender": "F" if female else "M",
             "date_of_birth": (created.date() - timedelta(days=int(rng.integers(23 * 365, 58 * 365)))).isoformat(),
             "mobile": str(int(rng.integers(6_000_000_000, 9_999_999_999))),
-            "email": f"{first}.{last}{int(rng.integers(1, 999))}@{rng.choice(ref.EMAIL_DOMAINS)}".lower().replace("'", ""),
-            "pan": f"{letters}P{last[0].upper()}{int(rng.integers(1000, 9999))}{rng.choice(list('ABCDEFGHJKLMNPRSTUVWXYZ'))}",
+            "email": email.lower().replace("'", ""),
+            "pan": f"{letters}P{last[0].upper()}{int(rng.integers(1000, 9999))}{pan_suffix}",
             "city": city,
             "state": state,
             "pincode": str(ref.CITY_PINCODES[city] + int(rng.integers(0, 90))),
@@ -309,7 +311,7 @@ class LendingSimulator:
             "bounce_reason": "",
         }
         inst.remaining = round(inst.remaining - amount, 2)
-        late = paid_on.day >= 26 and rng.random() < 0.15
+        late = paid_on.day >= 20 and rng.random() < 0.2
         self._emit("repayments", row, add_months(paid_on, 1) if late else paid_on)
 
     def _bounce(self, loan: Loan, inst: Installment, rng) -> None:
