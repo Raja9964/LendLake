@@ -1,0 +1,9 @@
+snapshots:
+  - name: snap_customers
+    description: SCD2 history of customer attributes (city, income, employment, KYC status).
+    relation: ref('stg_customers')
+    config:
+      unique_key: customer_id
+      strategy: timestamp
+      updated_at: updated_at
+      dbt_valid_to_current: "cast('9999-12-31' as timestamp)"

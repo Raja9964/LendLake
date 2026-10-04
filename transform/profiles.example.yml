@@ -1,0 +1,22 @@
+# Copy to ~/.dbt/profiles.yml (or keep next to dbt_project.yml) and pick a target.
+# The duckdb target is what the pipeline and CI use. The bigquery target is a
+# documented option and has not been exercised: the raw schema would need to be
+# loaded into BigQuery first (load jobs or external tables over GCS).
+lendlake:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      path: "{{ env_var('LENDLAKE_DUCKDB_PATH', 'warehouse/lendlake.duckdb') }}"
+      threads: 4
+
+    bigquery:
+      type: bigquery
+      method: oauth            # or service-account with keyfile: /path/to/key.json
+      project: "{{ env_var('LENDLAKE_GCP_PROJECT') }}"
+      dataset: lendlake
+      location: asia-south1
+      threads: 8
+      priority: interactive
+      job_execution_timeout_seconds: 600
+      job_retries: 1

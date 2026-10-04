@@ -1,0 +1,6 @@
+dpd_bucket,min_dpd,max_dpd,sort_order
+Current,0,0,1
+1-30,1,30,2
+31-60,31,60,3
+61-90,61,90,4
+90+,91,99999,5

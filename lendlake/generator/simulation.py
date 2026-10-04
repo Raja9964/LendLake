@@ -176,15 +176,15 @@ class LendingSimulator:
         weights = np.array([b.weight for b in branches])
         shares = np.array([p.share for p in ref.PRODUCTS])
         days_in_month = month_end(month).day
+        returning = list(self.customers)  # repeat borrowers come from earlier months only
 
         for _ in range(int(rng.poisson(expected))):
             branch = branches[rng.choice(len(branches), p=weights / weights.sum())]
             product = ref.PRODUCTS[rng.choice(len(ref.PRODUCTS), p=shares / shares.sum())]
             applied = _ts(month + timedelta(days=int(rng.integers(0, days_in_month))), rng)
 
-            if self.customers and rng.random() < 0.06:
-                ids = list(self.customers)
-                customer = self.customers[ids[rng.integers(len(ids))]]
+            if returning and rng.random() < 0.06:
+                customer = self.customers[returning[rng.integers(len(returning))]]
             else:
                 customer = self._new_customer(rng, product, branch, applied - timedelta(minutes=20))
                 score = int(np.clip(rng.normal(718, 62), 420, 890))

@@ -1,0 +1,7 @@
+lendlake:
+  target: duckdb
+  outputs:
+    duckdb:
+      type: duckdb
+      path: "{{ env_var('LENDLAKE_DUCKDB_PATH', 'warehouse/lendlake.duckdb') }}"
+      threads: 4

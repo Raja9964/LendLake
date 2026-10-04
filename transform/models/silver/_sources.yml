@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Bronze layer. Files landed as-is (all text) with _batch_id, _source_file and _ingested_at.
+    schema: raw
+    tables:
+      - name: branches
+        description: Branch master, one JSON document per branch per batch.
+      - name: customers
+      - name: loan_applications
+      - name: sanctions
+      - name: disbursements
+      - name: emi_schedule
+      - name: repayments
+      - name: collection_activities
+        description: Collections CRM export (JSON lines), one document per activity.

@@ -1,0 +1,5 @@
+product_code,product_name,product_family,is_secured,interest_type,min_tenure_months,max_tenure_months
+HL_STD,Home Loan,HOME_LOAN,true,FLOATING,180,300
+HL_AFF,Affordable Home Loan,HOME_LOAN,true,FLOATING,120,240
+PL_SAL,Personal Loan - Salaried,PERSONAL_LOAN,false,FIXED,12,60
+PL_SE,Personal Loan - Self Employed,PERSONAL_LOAN,false,FIXED,12,36

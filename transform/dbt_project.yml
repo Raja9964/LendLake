@@ -1,0 +1,40 @@
+name: lendlake
+version: "1.0.0"
+config-version: 2
+profile: lendlake
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages", "logs"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # run_date is required at run time: --vars '{run_date: "2025-06-30"}'
+  lookback_months: 1
+  late_fee_rate: 0.02
+  bounce_charge: 500
+  paid_tolerance: 1.00
+  date_spine_start: "2020-01-01"
+  date_spine_end: "2050-12-31"
+
+models:
+  lendlake:
+    silver:
+      +schema: silver
+      +materialized: table
+    gold:
+      +schema: gold
+      +materialized: table
+
+seeds:
+  lendlake:
+    +schema: reference
+
+snapshots:
+  lendlake:
+    +schema: snapshots

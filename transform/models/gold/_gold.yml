@@ -1,0 +1,172 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Calendar from 2020 to 2050 with month boundaries and Indian fiscal year.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+      - name: month_end_date
+        data_tests: [is_month_end]
+
+  - name: dim_branch
+    description: One row per branch (type 1).
+    columns:
+      - name: branch_code
+        data_tests: [unique, not_null]
+
+  - name: dim_product
+    description: One row per lending product.
+    columns:
+      - name: product_code
+        data_tests: [unique, not_null]
+
+  - name: dim_customer
+    description: SCD2 customer dimension built from the snap_customers snapshot; one row per customer version.
+    columns:
+      - name: customer_sk
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [not_null]
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "valid_from < valid_to"
+
+  - name: int_repayment_allocation
+    description: Successful payments split into interest, principal and penalty, interest first.
+    columns:
+      - name: payment_id
+        data_tests: [unique, not_null]
+      - name: principal_paid
+        data_tests: [not_negative]
+
+  - name: int_installment_status
+    description: Installments due up to the run month end, with the date each was fully paid.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [loan_id, installment_no]
+
+  - name: fct_disbursement
+    description: One row per disbursement (single-tranche loans, so also one row per loan).
+    columns:
+      - name: disbursement_id
+        data_tests: [unique, not_null]
+      - name: loan_id
+        data_tests: [unique, not_null]
+      - name: customer_sk
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_sk
+      - name: branch_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_branch')
+                field: branch_code
+      - name: product_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_code
+      - name: disbursed_amount
+        data_tests: [not_null, not_negative]
+
+  - name: fct_repayment
+    description: One row per payment attempt (successful or bounced).
+    columns:
+      - name: payment_id
+        data_tests: [unique, not_null]
+      - name: loan_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_disbursement')
+                field: loan_id
+      - name: payment_timeliness
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["ON_TIME", "LATE", "BOUNCED"]
+
+  - name: fct_portfolio_snapshot
+    description: Month-end snapshot, one row per loan per month while the loan is open.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [loan_id, snapshot_month]
+    columns:
+      - name: snapshot_month
+        data_tests: [not_null, is_month_end]
+      - name: outstanding_principal
+        data_tests: [not_null, not_negative]
+      - name: overdue_amount
+        data_tests: [not_negative]
+      - name: dpd
+        data_tests: [not_null, not_negative]
+      - name: dpd_bucket
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Current", "1-30", "31-60", "61-90", "90+"]
+          - dpd_bucket_consistent:
+              arguments:
+                dpd_column: dpd
+      - name: loan_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["ACTIVE", "CLOSED"]
+
+  - name: mart_delinquency_buckets
+    description: Month x branch x product x DPD bucket; loan counts and principal, zero-filled.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_month, branch_code, product_code, dpd_bucket]
+
+  - name: mart_collection_efficiency
+    description: Month x branch x product demand, collections, bounces and collections activity.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_month, branch_code, product_code]
+    columns:
+      - name: current_collection_efficiency
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: overall_collection_efficiency
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: mart_vintage_analysis
+    description: Disbursement cohort x product x months on book; 30+/90+ principal and ever-30+ counts.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [cohort_month, product_code, months_on_book]
+
+  - name: mart_portfolio_summary
+    description: Month x region x product headline book, disbursement and collection figures.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_month, region, product_code]
+
+  - name: mart_branch_performance
+    description: Month x branch scorecard with ranks for disbursement, collections and asset quality.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_month, branch_code]

@@ -1,0 +1,18 @@
+version: 2
+
+seeds:
+  - name: products
+    description: Product master for the lending book.
+    columns:
+      - name: product_code
+        data_tests: [unique, not_null]
+  - name: dpd_buckets
+    description: Days-past-due bucket definitions; the single reference for bucket boundaries.
+    columns:
+      - name: dpd_bucket
+        data_tests: [unique, not_null]
+  - name: city_aliases
+    description: Maps lower-cased city spellings seen in source systems to a canonical name.
+    columns:
+      - name: alias
+        data_tests: [unique, not_null]
