@@ -41,7 +41,8 @@ jobs:
         run: python -m lendlake run --backfill-from "$BACKFILL_FROM" --run-date "$RUN_DATE" --skip-generate
 
       - name: dbt build (models and tests) for the final run date
-        run: dbt build --project-dir transform --profiles-dir transform --vars "{run_date: '$RUN_DATE'}"
+        run: |
+          dbt build --project-dir transform --profiles-dir transform --vars "{run_date: '$RUN_DATE'}"
 
       - name: pytest
         run: pytest
