@@ -78,7 +78,7 @@ CITY_PINCODES = {
 
 MALE_NAMES = (
     "Aarav", "Arjun", "Rohan", "Karthik", "Rahul", "Imran", "Suresh", "Vikram", "Anil",
-    "Deepak", "Manoj", "Sanjay", "Joseph", "Harpreet", "Abhishek", "Nikhil", "Farhan", "Ravi",
+    "Deepak", "Manoj", "Naveen", "Joseph", "Harpreet", "Abhishek", "Nikhil", "Farhan", "Ravi",
 )
 FEMALE_NAMES = (
     "Priya", "Ananya", "Divya", "Kavya", "Sneha", "Pooja", "Fatima", "Ayesha", "Lakshmi",
