@@ -28,17 +28,39 @@ first_30_plus as (
     group by loan_id
 ),
 
+first_hits as (
+    select s.cohort_month, s.product_code, f.first_mob_30_plus, count(*) as loans
+    from first_30_plus as f
+    inner join (select distinct loan_id, cohort_month, product_code from snapshot) as s using (loan_id)
+    group by 1, 2, 3
+),
+
+book as (
+    select
+        cohort_month,
+        product_code,
+        months_on_book,
+        sum(case when dpd > 30 then outstanding_principal else 0 end) as pos_30_plus,
+        sum(case when dpd > 90 then outstanding_principal else 0 end) as pos_90_plus
+    from snapshot
+    group by 1, 2, 3
+),
+
+-- "ever 30+" is cumulative, so loans that later closed still count
 by_mob as (
     select
-        s.cohort_month,
-        s.product_code,
-        s.months_on_book,
-        sum(case when s.dpd > 30 then s.outstanding_principal else 0 end) as pos_30_plus,
-        sum(case when s.dpd > 90 then s.outstanding_principal else 0 end) as pos_90_plus,
-        sum(case when f.first_mob_30_plus <= s.months_on_book then 1 else 0 end) as loans_ever_30_plus
-    from snapshot as s
-    left join first_30_plus as f on f.loan_id = s.loan_id
-    group by 1, 2, 3
+        b.cohort_month,
+        b.product_code,
+        b.months_on_book,
+        b.pos_30_plus,
+        b.pos_90_plus,
+        coalesce(sum(h.loans), 0) as loans_ever_30_plus
+    from book as b
+    left join first_hits as h
+        on h.cohort_month = b.cohort_month
+        and h.product_code = b.product_code
+        and h.first_mob_30_plus <= b.months_on_book
+    group by 1, 2, 3, 4, 5
 )
 
 select
