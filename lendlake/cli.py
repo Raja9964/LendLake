@@ -4,8 +4,9 @@ import subprocess
 import sys
 import time
 from datetime import date
+from pathlib import Path
 
-from lendlake import bronze, transform
+from lendlake import bronze, export, transform
 from lendlake.config import PROJECT_ROOT, Settings
 from lendlake.dates import add_months, batch_id, month_end, month_range, parse_month
 from lendlake.generator import generate_batches
@@ -58,6 +59,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     dash = sub.add_parser("dashboard", help="Start the Streamlit dashboard")
     dash.add_argument("--port", type=int, default=8105)
+
+    site = sub.add_parser("export-site", help="Export the Gold marts as JSON for the static dashboard")
+    site.add_argument("--out", type=Path, default=export.SITE_DATA_DIR, help="Data folder (default: site/data)")
     return parser
 
 
@@ -129,7 +133,10 @@ def main(argv: list[str] | None = None) -> int:
             app = PROJECT_ROOT / "dashboard" / "app.py"
             return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app),
                                     "--server.port", str(args.port)])
-    except (PipelineError, bronze.BatchNotReady, transform.DbtError) as exc:
+        elif args.command == "export-site":
+            export.export_site(settings.duckdb_path, args.out, dbt_target=settings.dbt_project_dir / "target",
+                               landing_dir=settings.landing_dir)
+    except (PipelineError, bronze.BatchNotReady, transform.DbtError, export.ExportError) as exc:
         log.error("%s", exc)
         return 1
     return 0

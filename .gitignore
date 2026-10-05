@@ -32,3 +32,6 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Static site data written by the export
+site/data/
