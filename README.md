@@ -1,10 +1,14 @@
 # LendLake
 
+**[▶ Live demo](https://raja9964.github.io/LendLake/)**
+
 A lending analytics lakehouse for a retail home loan and personal loan book. It runs on DuckDB and dbt with a medallion layout, and every run is driven by an explicit run date.
 
 [![CI](https://github.com/Raja9964/LendLake/actions/workflows/ci.yml/badge.svg)](https://github.com/Raja9964/LendLake/actions/workflows/ci.yml)
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Live demo: the static portfolio dashboard on GitHub Pages](docs/screenshots/live-demo.png)
+
+The live demo is a static copy of the dashboard. On every push to `main`, a GitHub Actions workflow runs the real pipeline over 24 months of synthetic data, exports the Gold marts to JSON and publishes the page to GitHub Pages. It has the same KPI tiles, charts, filters and month selector as the Streamlit app, plus an "About this data" panel with the lineage, the dbt test results and the run timestamp.
 
 ## Why
 
@@ -18,10 +22,11 @@ Portfolio reporting for a loan book raises a few hard problems. Source extracts 
 - **Silver.** dbt models that clean, type, de-duplicate and conform the data. PAN is hashed and phone numbers are normalised. One dbt snapshot keeps SCD2 history of customer attributes.
 - **Gold.** Dimensions and facts, a loan-level month-end portfolio snapshot (outstanding principal and DPD), plus marts for delinquency buckets, collection efficiency, vintage curves and branch performance. The facts and the snapshot are incremental.
 - **Run-date driven.** `--run-date` is passed to dbt as a var. No model reads `current_date`, so any month can be re-run or backfilled.
-- **Data quality.** About 130 dbt tests per build, a mix of built-in, `dbt_utils` and custom generic and singular tests.
+- **Data quality.** About 100 dbt tests per build, a mix of built-in, `dbt_utils` and custom generic and singular tests.
 - **Orchestration.** A small Python CLI that runs generate, ingest and `dbt build` month by month.
 - **Dashboard.** A Streamlit app on port 8105 with KPI tiles, a disbursement trend, the DPD distribution, vintage curves and a branch leaderboard.
-- **CI.** GitHub Actions runs lint, generation, a 12-month pipeline, `dbt build` and pytest.
+- **Live demo.** `python -m lendlake export-site` writes the Gold marts as JSON for a static version of the dashboard in `site/`, which a Pages workflow rebuilds and deploys.
+- **CI.** GitHub Actions runs lint, generation, a 12-month pipeline, `dbt build` and pytest. A second workflow builds and deploys the live demo.
 
 ## Architecture
 
@@ -48,7 +53,8 @@ flowchart LR
     Sources -->|lendlake ingest| Bronze --> SV --> SN --> D
     SV --> F --> M
     D --> F
-    M --> DB[Streamlit dashboard :8105]
+    M --> DB[Streamlit dashboard]
+    M -->|lendlake export-site| WEB[Static dashboard on GitHub Pages]
 ```
 
 The CLI processes one month at a time: generate batch, then `ingest_batch` into bronze, then `dbt build --vars '{run_date: <month end>}'`.
@@ -89,12 +95,13 @@ The DPD buckets are Current, 1-30, 31-60, 61-90 and 90+. DPD is measured from th
 ## Project structure
 
 ```
-lendlake/            Python package: CLI, config, bronze ingestion, dbt runner
+lendlake/            Python package: CLI, config, bronze ingestion, dbt runner, site export
   generator/         seeded simulation, source noise, batch writer
 transform/           dbt project (models/silver, models/gold, snapshots, seeds, macros, tests)
 dashboard/app.py     Streamlit dashboard
-tests/               pytest: generator, bronze idempotency, CLI
-.github/workflows/   CI
+site/                static dashboard for GitHub Pages (data/ is written by the export)
+tests/               pytest: generator, bronze idempotency, CLI, site export
+.github/workflows/   CI and the Pages deploy
 ```
 
 ## Quick start
@@ -113,8 +120,18 @@ python -m lendlake run --backfill-from 2024-01-31 --run-date 2025-12-31
 # Next month only (the previous month must already be ingested)
 python -m lendlake run --run-date 2026-01-31
 
-# Dashboard on http://localhost:8105 (stop it before running the pipeline; DuckDB allows one writer)
+# Streamlit dashboard, served on port 8105.
+# Stop it before running the pipeline again; DuckDB allows one writer.
 python -m lendlake dashboard
+```
+
+![Streamlit dashboard](docs/screenshots/dashboard.png)
+
+To preview the static live demo, export the Gold marts into `site/data` and serve the `site` folder with any static file server. The example below uses port 8000.
+
+```bash
+python -m lendlake export-site --out site/data
+python -m http.server 8000 --directory site
 ```
 
 Individual steps:
@@ -152,7 +169,7 @@ The dbt vars in `transform/dbt_project.yml` are:
 
 ```bash
 ruff check .
-pytest                                   # generator, bronze idempotency, CLI orchestration
+pytest                                   # generator, bronze idempotency, CLI orchestration, site export
 dbt build --project-dir transform --profiles-dir transform --vars "{run_date: '2024-12-31'}"
 ```
 
