@@ -1,0 +1,62 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LENDLAKE_SCALE: "0.2"
+      LENDLAKE_SEED: "42"
+      LENDLAKE_START_MONTH: "2024-01"
+      BACKFILL_FROM: "2024-01-31"
+      RUN_DATE: "2025-12-31"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install dbt packages
+        run: dbt deps --project-dir transform --profiles-dir transform
+
+      - name: Run the pipeline over 24 months (generate, ingest, dbt build)
+        run: python -m lendlake run --backfill-from "$BACKFILL_FROM" --run-date "$RUN_DATE"
+
+      - name: Export the Gold marts for the static dashboard
+        run: python -m lendlake export-site --out site/data
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
