@@ -228,7 +228,7 @@ h1:focus { outline: none; }
   appearance: none; -webkit-appearance: none; border: 0; background: transparent; height: 32px; padding: 0 6px;
   font-weight: 600; font-size: 14px; text-align: center; cursor: pointer; min-width: 92px;
 }
-.month-picker select option { color: initial; }
+.month-picker select option { background-color: var(--surface); color: var(--ink); }
 .step { display: grid; place-items: center; width: 32px; height: 32px; border: 0; background: transparent; cursor: pointer; color: var(--ink-2); border-radius: 8px; }
 .step:hover:not(:disabled) { background: var(--wash); color: var(--ink); }
 .step:disabled { opacity: 0.35; cursor: default; }
